@@ -1,16 +1,55 @@
 import "./App.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer } from "react";
 import TaskInput from "./components/TaskInput";
 import TaskList from "./components/TaskList";
 
 function App() {
-  const [tasks, setTasks] = useState([]);
+  // const [tasks, setTasks] = useState([]);
   const [task, setTask] = useState("");
   const [filter, setFilter] = useState("all");
   const [editingId, setEditingId] = useState(null);
+  const [tasks, dispatch] = useReducer(reducer, initialState);
 
   // remaining tasks
   const remainingTasks = tasks.filter((task) => !task.completed).length;
+
+  const initialState = [];
+
+  function reducer(state, action) {
+    switch (action.type) {
+      case "ADD_TASK":
+        return [
+          ...state,
+          { id: Date.now(), text: action.payload, completed: false },
+        ];
+
+      case "DELETE_TASK":
+        return state.filter((task) => task.id !== action.payload);
+
+      case "TOGGLE_TASK":
+        return state.map((task) =>
+          task.id === action.payload
+            ? { ...task, completed: !task.completed }
+            : task,
+        );
+
+      case "EDIT_TASK":
+        return state.map((task) =>
+          task.id === action.payload.id
+            ? { ...task, text: action.payload.text }
+            : task,
+        );
+
+      case "CLEAR_COMPLETED":
+        return state.filter((task) => !task.completed);
+
+      case "LOAD_TASKS":
+        return action.payload;
+
+      default:
+        return state;
+    }
+  }
 
   // filtered tasks
   const filteredTasks = tasks.filter((task) => {
@@ -36,34 +75,56 @@ function App() {
       return;
     }
 
-    setTasks([...tasks, { id: Date.now(), text: task, completed: false }]);
+    dispatch({
+      type: "ADD_TASK",
+      payload: task,
+    });
 
     setTask("");
   }
 
   function deleteTask(idToDelete) {
-    setTasks(tasks.filter((task) => task.id !== idToDelete));
+    dispatch({
+      type: "DELETE_TASK",
+      payload: id,
+    });
   }
 
   function toggleTask(idToToggle) {
-    setTasks(
-      tasks.map((task) =>
-        task.id === idToToggle ? { ...task, completed: !task.completed } : task,
-      ),
-    );
+    dispatch({
+      type: "TOGGLE_TASK",
+      payload: id,
+    });
   }
 
   function editTask(id, newText) {
-    setTasks(
-      tasks.map((task) => (task.id === id ? { ...task, text: newText } : task)),
-    );
+    dispatch({
+      type: "EDIT_TASK",
+      payload: {
+        id: id,
+        text: newText,
+      },
+    });
   }
 
   function clearCompleted() {
-    setTasks(tasks.filter((task) => !task.completed));
+    dispatch({
+      type: "CLEAR_COMPLETED",
+    });
   }
 
   // save tasks to localStorage
+  useEffect(() => {
+    const savedTasks = localStorage.getItem("tasks");
+
+    if (savedTasks) {
+      dispatch({
+        type: "LOAD_TASKS",
+        payload: JSON.parse(savedTasks),
+      });
+    }
+  }, []);
+
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
